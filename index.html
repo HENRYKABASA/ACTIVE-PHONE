@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Safaricom BTS Network Coverage</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .bts-marker {
+            background: #ff0000;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([-1.286389, 36.817223], 11);
+
+        // Add base layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Nairobi bounding coordinates
+        const nairobiBBox = [36.7, -1.4, 37.0, -1.1];
+        const hexRadius = 1.2; // In kilometers
+
+        // Generate hex grid
+        const hexGrid = turf.hexGrid(nairobiBBox, hexRadius, { units: 'kilometers' });
+
+        // Create two color schemes for alternating hexagons
+        const hexColors = ['rgba(65,105,225,0.4)', 'rgba(60,179,113,0.4)']; // RoyalBlue & MediumSeaGreen
+
+        // Create coverage overlay for entire Nairobi
+        const nairobiCoverage = L.polygon(
+            [
+                [-1.4, 36.7], // SW
+                [-1.4, 37.0], // NW
+                [-1.1, 37.0], // NE
+                [-1.1, 36.7]  // SE
+            ],
+            {
+                color: '#4682b4',
+                fillColor: '#4169e1',
+                fillOpacity: 0.15,
+                weight: 1
+            }
+        ).addTo(map);
+
+        // Add hexagons with alternating colors
+        hexGrid.features.forEach((hex, index) => {
+            const coordinates = hex.geometry.coordinates[0]
+                .map(coord => [coord[1], coord[0]]); // Convert to LatLng
+            
+            const hexColor = hexColors[index % 2]; // Alternate colors
+            
+            L.polygon(coordinates, {
+                color: '#2f4f4f',
+                weight: 0.5,
+                fillColor: hexColor,
+                fillOpacity: 0.4
+            }).addTo(map);
+
+            // Add BTS marker at center
+            const center = turf.centerOfMass(hex).geometry.coordinates;
+            L.marker([center[1], center[0]], {
+                icon: L.divIcon({
+                    className: 'bts-marker',
+                    iconSize: [14, 14]
+                })
+            }).addTo(map);
+        });
+
+        // Add legend
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <h4>Network Coverage</h4>
+                <div><span style="background:${hexColors[0]}"> </span> Sector 1</div>
+                <div><span style="background:${hexColors[1]}"> </span> Sector 2</div>
+                <div><span class="bts-marker"></span> BTS Tower</div>
+                <div><span style="background:#4169e1;opacity:0.15"> </span> Overall Coverage</div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+    </script>
+</body>
+</html>

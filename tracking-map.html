@@ -1,0 +1,51 @@
+<!-- public/tracking-map.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Network Operations Center</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #map { height: 100vh; }
+    .control-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="control-panel">
+    <input type="text" id="imsiInput" placeholder="Enter IMSI...">
+    <button onclick="trackDevice()">Locate</button>
+    <div id="result"></div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([-1.286389, 36.817223], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    async function trackDevice() {
+      const imsi = document.getElementById('imsiInput').value;
+      const response = await fetch('http://localhost:3000/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imsi })
+      });
+      
+      const data = await response.json();
+      L.marker(data.location)
+        .addTo(map)
+        .bindPopup(`<b>${imsi}</b><br>Accuracy: ${data.accuracy}`)
+        .openPopup();
+      map.setView(data.location, 16);
+    }
+  </script>
+</body>
+</html>
